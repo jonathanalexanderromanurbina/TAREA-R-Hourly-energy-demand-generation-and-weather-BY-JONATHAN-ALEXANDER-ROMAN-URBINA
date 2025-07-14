@@ -1,0 +1,112 @@
+---
+title: "Análisis de Demanda Energética y Clima en España"
+author: "Tu Nombre"
+date: "`r format(Sys.Date(), '%d de %B de %Y')`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+
+
+🔍 Introducción
+Este proyecto analiza el comportamiento de la demanda eléctrica en España entre 2014 y 2018, junto con variables meteorológicas como temperatura, humedad y presión atmosférica. El dataset proviene de Kaggle.
+
+📥 Carga y preparación de datos
+{r}
+Copiar
+Editar
+# Cargar datasets previamente subidos
+energy <- read_csv("energy_dataset.csv")
+weather <- read_csv("weather_features.csv")
+
+# Procesar fechas
+energy <- energy %>% mutate(time = ymd_hms(time))
+weather <- weather %>% mutate(dt_iso = ymd_hms(dt_iso))
+
+# Resumen climático promedio por timestamp
+weather_summary <- weather %>%
+  group_by(dt_iso) %>%
+  summarise(temp = mean(temp, na.rm=TRUE),
+            humidity = mean(humidity, na.rm=TRUE),
+            pressure = mean(pressure, na.rm=TRUE),
+            wind_speed = mean(wind_speed, na.rm=TRUE))
+
+# Unir datasets por fecha
+df <- energy %>%
+  inner_join(weather_summary, by = c("time" = "dt_iso"))
+
+# Agregar columnas de fecha
+df <- df %>%
+  mutate(hour = hour(time),
+         dow = wday(time, label = TRUE),
+         month = month(time, label = TRUE)) %>%
+  drop_na()
+📊 Análisis Exploratorio de Datos (EDA)
+{r}
+Copiar
+Editar
+summary(df$demand)
+summary(df$temp)
+
+# Demanda promedio por hora
+by_hour <- df %>%
+  group_by(hour) %>%
+  summarise(avg_dem = mean(demand, na.rm = TRUE))
+
+# Demanda promedio por día de la semana
+by_dow <- df %>%
+  group_by(dow) %>%
+  summarise(avg_dem = mean(demand, na.rm = TRUE))
+📈 Visualizaciones
+Demanda total en el tiempo
+{r}
+Copiar
+Editar
+ggplot(df, aes(time, demand)) +
+  geom_line(color = "steelblue") +
+  labs(title = "Demanda eléctrica en España (2014–2018)",
+       x = "Fecha", y = "Demanda [MW]") +
+  theme_minimal()
+Promedio de demanda por hora del día
+{r}
+Copiar
+Editar
+ggplot(by_hour, aes(hour, avg_dem)) +
+  geom_line(color = "forestgreen", size = 1) +
+  labs(title = "Demanda promedio por hora del día",
+       x = "Hora", y = "Demanda promedio [MW]") +
+  theme_minimal()
+Promedio de demanda por día de la semana
+{r}
+Copiar
+Editar
+ggplot(by_dow, aes(dow, avg_dem)) +
+  geom_bar(stat = "identity", fill = "orange") +
+  labs(title = "Demanda promedio por día de la semana",
+       x = "Día", y = "Demanda promedio [MW]") +
+  theme_minimal()
+🧠 Conclusiones
+La demanda energética muestra un patrón claro por hora del día, con picos en la mañana y noche.
+
+Existe una diferencia notable entre días laborables y fines de semana.
+
+La integración de datos climáticos permitirá futuras etapas como predicción de demanda según temperatura.
+
+El dataset es adecuado para análisis más avanzados como:
+
+Modelado de series temporales (ARIMA, LSTM)
+
+Predicción multivariable (regresión, redes neuronales)
+
+Clustering según perfil de demanda y clima
+
+📌 Próximos pasos
+Incorporar variables de generación (solar, eólica).
+
+Comparar demanda en ciudades específicas.
+
+Desarrollar modelos de predicción de consumo energético en base al clima.
